@@ -20,10 +20,12 @@ libraryDependencies ++= Seq(
   "org.eclipse.jetty" % "jetty-webapp" % "7.4.5.v20110725" % "container",
   "javax.servlet" % "servlet-api" % "2.5" % "provided",
   "org.slf4j" % "slf4j-simple" % "1.6.1",
-  "org.scalatra" %% "scalatra-scalatest" % "2.0.4" % "test"
+  "org.scalatra" %% "scalatra-scalatest" % "2.0.4" % "test",
+  "org.neo4j" % "neo4j-rest-graphdb" % "1.8.RC2",
+  "org.scalaj" %% "scalaj-time" % "0.6",
+  "com.lambdaworks" % "scrypt" % "1.3.3"
 )
 
-libraryDependencies += "org.neo4j" % "neo4j-rest-graphdb" % "1.8.RC2"
 
 resolvers += "Sonatype OSS Snapshots" at "http://oss.sonatype.org/content/repositories/snapshots/"
 
