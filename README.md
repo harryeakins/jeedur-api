@@ -4,6 +4,10 @@ Jeedur API
 
 Scala SBT project with Scalatra, lift-json and ScalaTest.
 
+## Dependencies
+
+Neo4j 1.8.2 (Community Edition) - [Download Page](http://www.neo4j.org/download)
+
 ## Setup
 
 Launch [SBT](https://github.com/harrah/xsbt/wiki) (embedded in project):

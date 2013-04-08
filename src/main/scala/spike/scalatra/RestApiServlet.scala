@@ -4,8 +4,10 @@ import org.scalatra._
 import scalate.ScalateSupport
 import net.liftweb.json._
 import net.liftweb.json.JsonDSL._
+import org.neo4j.rest.graphdb.RestGraphDatabase
+import scala.collection.JavaConversions._
 
-case class User(name: String, age: Int)
+case class User(name: String)
 
 class RestApiServlet extends ScalatraServlet with ScalateSupport with JsonHelpers {
   before("/v1/*") {
@@ -13,16 +15,35 @@ class RestApiServlet extends ScalatraServlet with ScalateSupport with JsonHelper
   }
 
   get("/v1/users/:id") {
-    params("id") match {
-      case "1" => Json(User("John", 30))
-      case "2" => Json(User("Harry", 22))
-    }
+    val db = new RestGraphDatabase("http://localhost:7474/db/data")
+    val query = db.index().forNodes("users").query("user_id", params("id"))
+    query.getSingle.getProperty("name")
+  }
+
+  get("/v1/users") {
+    val db = new RestGraphDatabase("http://localhost:7474/db/data")
+    val query = db.index.forNodes("users").query("user_id", "*")
+    query.iterator.toList.map(_.getProperty("name"))
   }
 
   post("/v1/users") {
+    val db = new RestGraphDatabase("http://localhost:7474/db/data");
     val user = parse(request.body).extract[User]
-    println(Json(user))
-    1
+    val tx = db.beginTx()
+    try {
+      val new_user_id = db.getNodeById(0).getProperty("user_id_counter", 5).asInstanceOf[Int]
+      val node = db.createNode()
+      node.setProperty("name", user.name)
+      node.setProperty("type", "User")
+      node.setProperty("user_id", new_user_id)
+      db.index().forNodes("users").add(node, "name", user.name)
+      db.index().forNodes("users").add(node, "user_id", new_user_id)
+      db.getNodeById(0).setProperty("user_id_counter", new_user_id + 1)
+      tx.success()
+      "Success!"
+    } finally {
+      tx.finish()
+    }
   }
 
   get("/error") {

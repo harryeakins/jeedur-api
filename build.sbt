@@ -23,5 +23,8 @@ libraryDependencies ++= Seq(
   "org.scalatra" %% "scalatra-scalatest" % "2.0.4" % "test"
 )
 
+libraryDependencies += "org.neo4j" % "neo4j-rest-graphdb" % "1.8.RC2"
+
 resolvers += "Sonatype OSS Snapshots" at "http://oss.sonatype.org/content/repositories/snapshots/"
 
+resolvers += "neo4j-releases" at "http://m2.neo4j.org/releases"
