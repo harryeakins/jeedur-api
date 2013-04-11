@@ -10,7 +10,6 @@ import net.liftweb.json.Serialization.write
 import org.neo4j.kernel.GraphDatabaseAPI
 import org.neo4j.graphdb.{Relationship, Node}
 import JeedurRelationships._
-import org.neo4j.graphdb.Direction._
 import java.lang.Iterable
 import collection.JavaConversions.asScalaIterator
 
@@ -85,18 +84,20 @@ class RestApiServlet extends ScalatraServlet with ScalateSupport with JsonHelper
     User.fromNode(getUserNode(db, user_id))
   }
 
-  def getCard(db: GraphDatabaseAPI, card_id: Int, user_id: Int): User = {
+  def getCard(db: GraphDatabaseAPI, card_id: Int, user_id: Int): Card = {
     val tx = db.beginTx()
     try {
       val index = db.index().forNodes("cards")
       val node = index.query("card_id", card_id).getSingle
-      val relationships = node.getRelationships(CREATED_CARD, INCOMING)
+      val relationships = node.getRelationships()
       val ownedByUser = relationships.exists {
-        x => x.getEndNode.getProperty("user_id").toString.toInt == user_id
+        x =>
+          val userNode = x.getOtherNode(node)
+          User.fromNode(userNode).user_id.get == user_id
       }
       require(ownedByUser)
 
-      val card = User.fromNode(node)
+      val card = Card.fromNode(node)
 
       tx.success()
       card
@@ -116,7 +117,7 @@ class RestApiServlet extends ScalatraServlet with ScalateSupport with JsonHelper
     try {
       val cardProperties = Set("front", "back", "create_date")
       val generatedProperties = Map("type" -> "Card", "card_id" -> getNextCardId(db))
-      val indexedProperties = Set("front", "back", "create_date")
+      val indexedProperties = Set("front", "back", "create_date", "card_id")
 
       require(indexedProperties.forall {
         propName => cardProperties.contains(propName) || generatedProperties.contains(propName)
@@ -185,20 +186,21 @@ class RestApiServlet extends ScalatraServlet with ScalateSupport with JsonHelper
     val db = new RestGraphDatabase("http://localhost:7474/db/data");
 
     val json = parse(request.body) transform {
-      case JField("card_id", _) => JField("user_id", None: Option[Int])
+      case JField("card_id", _) => JField("card_id", None: Option[Int])
     }
 
     val card = json.extract[Card]
 
-    createCard(db, card, params("id").toInt)
+    val cardNode = createCard(db, card, params("id").toInt)
 
-    write(card)
+    write(Card.fromNode(cardNode))
   }
 
-  get("/v1/users/:id/cards/:card_id") {
+  get("/v1/users/:user_id/cards/:card_id") {
     val db = new RestGraphDatabase("http://localhost:7474/db/data")
     val card_id = params("card_id").toInt
     val user_id = params("user_id").toInt
+    println("Getting card")
     val card = getCard(db, card_id, user_id)
     write(card)
   }
