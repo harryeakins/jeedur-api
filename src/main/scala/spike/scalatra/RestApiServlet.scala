@@ -5,31 +5,29 @@ import scalate.ScalateSupport
 import net.liftweb.json._
 import net.liftweb.json.JsonDSL._
 import org.neo4j.rest.graphdb.RestGraphDatabase
-import org.joda.time.DateTime
 import com.lambdaworks.crypto.SCryptUtil
 import net.liftweb.json.Serialization.write
 import org.neo4j.kernel.GraphDatabaseAPI
-import org.neo4j.graphdb.Node
+import org.neo4j.graphdb.{Relationship, Node}
+import JeedurRelationships._
+import org.neo4j.graphdb.Direction._
+import java.lang.Iterable
+import collection.JavaConversions.asScalaIterator
 
-class User(val username: String,
-           val user_id: Option[Int],
-           val email: String,
-           val join_date: DateTime,
-           val passhash: String) {
-  def this(username: String, email: String, passhash: String) =
-    this(username, None: Option[Int], email, DateTime.now(), passhash)
-
-  override def toString = {
-    "User[%d, %s, %s]".format(user_id.get, username, email)
-  }
-}
 
 class RestApiServlet extends ScalatraServlet with ScalateSupport with JsonHelpers {
+  implicit def iterableToList(x: Iterable[Relationship]): List[Relationship] = x.iterator().toList
 
   def getNextUserId(db: GraphDatabaseAPI): Int = {
-    val new_user_id = db.getNodeById(0).getProperty("user_id_counter", 5).asInstanceOf[Int]
+    val new_user_id = db.getNodeById(0).getProperty("user_id_counter", 0).asInstanceOf[Int]
     db.getNodeById(0).setProperty("user_id_counter", new_user_id + 1)
     new_user_id
+  }
+
+  def getNextCardId(db: GraphDatabaseAPI): Int = {
+    val new_card_id = db.getNodeById(0).getProperty("card_id_counter", 0).asInstanceOf[Int]
+    db.getNodeById(0).setProperty("card_id_counter", new_card_id + 1)
+    new_card_id
   }
 
   def createUser(db: GraphDatabaseAPI, user: User): Node = {
@@ -70,32 +68,84 @@ class RestApiServlet extends ScalatraServlet with ScalateSupport with JsonHelper
     }
   }
 
-  def getUser(db: GraphDatabaseAPI, user_id: Int): User = {
-    implicit def reflector(ref: AnyRef) = new {
-      def setV(name: String, value: Any): Unit = ref.getClass.getMethods.find(_.getName == name + "_$eq").get.invoke(ref, value.asInstanceOf[AnyRef])
-    }
-
+  def getUserNode(db: GraphDatabaseAPI, user_id: Int): Node = {
     val tx = db.beginTx()
     try {
       val index = db.index().forNodes("users")
       val node = index.query("user_id", user_id).getSingle
 
-      implicit def tos(x: AnyRef): String = x.toString
-      implicit def toi(x: AnyRef): Option[Int] = Some(x.toString.toInt)
-      implicit def todt(x: AnyRef): DateTime = new DateTime(x)
-
-      val user = new User(node.getProperty("username"),
-        node.getProperty("user_id"),
-        node.getProperty("email"),
-        node.getProperty("join_date"),
-        node.getProperty("passhash"))
-
       tx.success()
-      user
+      node
     } finally {
       tx.finish()
     }
   }
+
+  def getUser(db: GraphDatabaseAPI, user_id: Int): User = {
+    User.fromNode(getUserNode(db, user_id))
+  }
+
+  def getCard(db: GraphDatabaseAPI, card_id: Int, user_id: Int): User = {
+    val tx = db.beginTx()
+    try {
+      val index = db.index().forNodes("cards")
+      val node = index.query("card_id", card_id).getSingle
+      val relationships = node.getRelationships(CREATED_CARD, INCOMING)
+      val ownedByUser = relationships.exists {
+        x => x.getEndNode.getProperty("user_id").toString.toInt == user_id
+      }
+      require(ownedByUser)
+
+      val card = User.fromNode(node)
+
+      tx.success()
+      card
+    } finally {
+      tx.finish()
+    }
+  }
+
+  def createCard(db: GraphDatabaseAPI, card: Card, user_id: Int): Node = {
+    require(!card.card_id.isDefined)
+
+    implicit def reflector(ref: AnyRef) = new {
+      def getMember(name: String): Any = ref.getClass.getMethods.find(_.getName == name).get.invoke(ref)
+    }
+
+    val tx = db.beginTx()
+    try {
+      val cardProperties = Set("front", "back", "create_date")
+      val generatedProperties = Map("type" -> "Card", "card_id" -> getNextCardId(db))
+      val indexedProperties = Set("front", "back", "create_date")
+
+      require(indexedProperties.forall {
+        propName => cardProperties.contains(propName) || generatedProperties.contains(propName)
+      })
+      require(cardProperties.intersect(generatedProperties.keySet).isEmpty)
+
+      val index = db.index().forNodes("cards")
+      val cardNode = db.createNode()
+
+      cardProperties.foreach {
+        propName => cardNode.setProperty(propName, card.getMember(propName))
+      }
+      generatedProperties.foreach {
+        case (propName, value) => cardNode.setProperty(propName, value)
+      }
+      indexedProperties.foreach {
+        propName => index.add(cardNode, propName, cardNode.getProperty(propName))
+      }
+
+      val userNode = getUserNode(db, user_id)
+      userNode.createRelationshipTo(cardNode, CREATED_CARD)
+
+      tx.success()
+      cardNode
+    } finally {
+      tx.finish()
+    }
+  }
+
 
   before("/v1/*") {
     contentType = "application/json;charset=UTF-8"
@@ -129,6 +179,28 @@ class RestApiServlet extends ScalatraServlet with ScalateSupport with JsonHelper
 
   get("/error") {
     throw new RuntimeException("oh noez")
+  }
+
+  post("/v1/users/:id/cards") {
+    val db = new RestGraphDatabase("http://localhost:7474/db/data");
+
+    val json = parse(request.body) transform {
+      case JField("card_id", _) => JField("user_id", None: Option[Int])
+    }
+
+    val card = json.extract[Card]
+
+    createCard(db, card, params("id").toInt)
+
+    write(card)
+  }
+
+  get("/v1/users/:id/cards/:card_id") {
+    val db = new RestGraphDatabase("http://localhost:7474/db/data")
+    val card_id = params("card_id").toInt
+    val user_id = params("user_id").toInt
+    val card = getCard(db, card_id, user_id)
+    write(card)
   }
 
   error {
