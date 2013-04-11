@@ -27,6 +27,7 @@ class User(val username: String,
     this(username, None: Option[Int], email, DateTime.now(), passhash)
 
   override def toString = {
-    "User[%d, %s, %s]".format(user_id.get, username, email)
+    "{\"user_id\":\"%s\", \"username\":\"%s\",\"email\":\"%s\",\"join_date\":\"%s\"}"
+      .format(user_id.get, username, email, join_date)
   }
 }

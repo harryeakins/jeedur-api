@@ -25,9 +25,8 @@ class Card(val card_id: Option[Int],
     this(card_id, front, back, DateTime.now())
 
   override def toString = {
-    "Card[%d, %s, %s, %s]".format(card_id, //
-      front.substring(0, 10) + "...", //
-      back.substring(0, 10) + "...", //
-      create_date)
+
+    "{\"card_id\":\"%s\", \"front\":\"%s\",\"back\":\"%s\",\"create_date\":\"%s\"}"
+      .format(card_id.get, front, back, create_date)
   }
 }

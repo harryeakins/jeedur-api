@@ -6,7 +6,6 @@ import net.liftweb.json._
 import net.liftweb.json.JsonDSL._
 import org.neo4j.rest.graphdb.RestGraphDatabase
 import com.lambdaworks.crypto.SCryptUtil
-import net.liftweb.json.Serialization.write
 import org.neo4j.kernel.GraphDatabaseAPI
 import org.neo4j.graphdb.{Relationship, Node}
 import JeedurRelationships._
@@ -106,6 +105,19 @@ class RestApiServlet extends ScalatraServlet with ScalateSupport with JsonHelper
     }
   }
 
+  def getAllCards(db: GraphDatabaseAPI, user_id: Int): List[Card] = {
+    val tx = db.beginTx()
+    try {
+      val userNode = getUserNode(db, user_id)
+      var cards = userNode.getRelationships(CREATED_CARD).map(rel => Card.fromNode(rel.getEndNode))
+
+      tx.success()
+      cards
+    } finally {
+      tx.finish()
+    }
+  }
+
   def createCard(db: GraphDatabaseAPI, card: Card, user_id: Int): Node = {
     require(!card.card_id.isDefined)
 
@@ -155,12 +167,12 @@ class RestApiServlet extends ScalatraServlet with ScalateSupport with JsonHelper
 
   get("/v1/users/:id") {
     val db = new RestGraphDatabase("http://localhost:7474/db/data")
-    write(getUser(db, params("id").toInt))
+    getUser(db, params("id").toInt).toString
   }
 
   get("/v1/users") {
     val db = new RestGraphDatabase("http://localhost:7474/db/data")
-    write(getUser(db, 30))
+    getUser(db, 30)
   }
 
   post("/v1/users") {
@@ -175,7 +187,7 @@ class RestApiServlet extends ScalatraServlet with ScalateSupport with JsonHelper
 
     createUser(db, user)
 
-    write(user)
+    user
   }
 
   get("/error") {
@@ -193,16 +205,24 @@ class RestApiServlet extends ScalatraServlet with ScalateSupport with JsonHelper
 
     val cardNode = createCard(db, card, params("id").toInt)
 
-    write(Card.fromNode(cardNode))
+    Card.fromNode(cardNode)
   }
+
+  get("/v1/users/:user_id/cards") {
+    val db = new RestGraphDatabase("http://localhost:7474/db/data");
+
+    val cards = getAllCards(db, params("user_id").toInt)
+
+    cards
+  }
+
 
   get("/v1/users/:user_id/cards/:card_id") {
     val db = new RestGraphDatabase("http://localhost:7474/db/data")
     val card_id = params("card_id").toInt
     val user_id = params("user_id").toInt
-    println("Getting card")
     val card = getCard(db, card_id, user_id)
-    write(card)
+    card.toString
   }
 
   error {
