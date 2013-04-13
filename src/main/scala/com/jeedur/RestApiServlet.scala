@@ -16,18 +16,6 @@ import collection.JavaConversions.asScalaIterator
 class RestApiServlet extends ScalatraServlet with ScalateSupport with JsonHelpers {
   implicit def iterableToList(x: Iterable[Relationship]): List[Relationship] = x.iterator().toList
 
-  def getNextUserId(db: GraphDatabaseAPI): Int = {
-    val new_user_id = db.getNodeById(0).getProperty("user_id_counter", 0).asInstanceOf[Int]
-    db.getNodeById(0).setProperty("user_id_counter", new_user_id + 1)
-    new_user_id
-  }
-
-  def getNextCardId(db: GraphDatabaseAPI): Int = {
-    val new_card_id = db.getNodeById(0).getProperty("card_id_counter", 0).asInstanceOf[Int]
-    db.getNodeById(0).setProperty("card_id_counter", new_card_id + 1)
-    new_card_id
-  }
-
   def createUser(db: GraphDatabaseAPI, user: User): Node = {
     require(!user.user_id.isDefined)
 
@@ -38,7 +26,8 @@ class RestApiServlet extends ScalatraServlet with ScalateSupport with JsonHelper
     val tx = db.beginTx()
     try {
       val userProperties = Set("username", "email", "join_date", "passhash")
-      val generatedProperties = Map("type" -> "User", "user_id" -> getNextUserId(db))
+      val generatedProperties = Map("type" -> "User", "user_id" -> Counters.get(db, "user_id"))
+      println("generatedProperties: " + generatedProperties("user_id"))
       val indexedProperties = Set("username", "user_id", "join_date", "email")
 
       require(indexedProperties.forall {
@@ -53,7 +42,7 @@ class RestApiServlet extends ScalatraServlet with ScalateSupport with JsonHelper
         propName => node.setProperty(propName, user.getMember(propName))
       }
       generatedProperties.foreach {
-        case (propName, value) => node.setProperty(propName, value)
+        case (propName, value) => println("Setting " + propName + " to " + value); node.setProperty(propName, value)
       }
       indexedProperties.foreach {
         propName => index.add(node, propName, node.getProperty(propName))
@@ -128,7 +117,7 @@ class RestApiServlet extends ScalatraServlet with ScalateSupport with JsonHelper
     val tx = db.beginTx()
     try {
       val cardProperties = Set("front", "back", "create_date")
-      val generatedProperties = Map("type" -> "Card", "card_id" -> getNextCardId(db))
+      val generatedProperties = Map("type" -> "Card", "card_id" -> Counters.get(db, "card_id"))
       val indexedProperties = Set("front", "back", "create_date", "card_id")
 
       require(indexedProperties.forall {
@@ -184,10 +173,8 @@ class RestApiServlet extends ScalatraServlet with ScalateSupport with JsonHelper
     }
 
     val user = json.extract[User]
-
-    createUser(db, user)
-
-    user
+    val node = createUser(db, user)
+    User.fromNode(node)
   }
 
   get("/error") {

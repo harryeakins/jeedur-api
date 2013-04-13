@@ -28,6 +28,6 @@ class User(val username: String,
 
   override def toString = {
     "{\"user_id\":\"%s\", \"username\":\"%s\",\"email\":\"%s\",\"join_date\":\"%s\"}"
-      .format(user_id.get, username, email, join_date)
+      .format(if (user_id.isEmpty) "NONE" else user_id.get, username, email, join_date)
   }
 }
