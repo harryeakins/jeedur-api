@@ -1,4 +1,4 @@
-package spike.scalatra
+package com.jeedur
 
 trait JsonHelpers {
 

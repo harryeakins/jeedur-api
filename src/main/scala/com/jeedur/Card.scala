@@ -1,4 +1,4 @@
-package spike.scalatra
+package com.jeedur
 
 import org.neo4j.graphdb.Node
 import org.joda.time.DateTime
@@ -25,7 +25,6 @@ class Card(val card_id: Option[Int],
     this(card_id, front, back, DateTime.now())
 
   override def toString = {
-
     "{\"card_id\":\"%s\", \"front\":\"%s\",\"back\":\"%s\",\"create_date\":\"%s\"}"
       .format(card_id.get, front, back, create_date)
   }

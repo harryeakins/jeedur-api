@@ -1,4 +1,4 @@
-package spike.scalatra
+package com.jeedur
 
 import org.neo4j.graphdb.Node
 import org.joda.time.DateTime

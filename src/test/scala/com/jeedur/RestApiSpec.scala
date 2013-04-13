@@ -1,4 +1,4 @@
-package spike.scalatra
+package com.jeedur
 
 import org.scalatra.test.scalatest._
 import org.scalatest.WordSpec
@@ -10,7 +10,7 @@ class RestApiSpec extends ScalatraSuite with WordSpec with JsonHelpers {
   "get user" should {
     "return user info" in {
       get("/v1/users/1") {
-        jsonResponse.extract[User].name should equal("John")
+        jsonResponse.extract[User].username should equal("John")
       }
     }
   }

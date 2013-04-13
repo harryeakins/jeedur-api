@@ -1,4 +1,4 @@
-package spike.scalatra
+package com.jeedur
 
 import org.scalatra._
 import scalate.ScalateSupport
@@ -88,7 +88,7 @@ class RestApiServlet extends ScalatraServlet with ScalateSupport with JsonHelper
     try {
       val index = db.index().forNodes("cards")
       val node = index.query("card_id", card_id).getSingle
-      val relationships = node.getRelationships()
+      val relationships = node.getRelationships
       val ownedByUser = relationships.exists {
         x =>
           val userNode = x.getOtherNode(node)
@@ -176,7 +176,7 @@ class RestApiServlet extends ScalatraServlet with ScalateSupport with JsonHelper
   }
 
   post("/v1/users") {
-    val db = new RestGraphDatabase("http://localhost:7474/db/data");
+    val db = new RestGraphDatabase("http://localhost:7474/db/data")
 
     val json = parse(request.body) transform {
       case JField("password", JString(x)) => JField("passhash", JString(SCryptUtil.scrypt(x, 65536, 8, 1))) // 2^14
@@ -195,7 +195,7 @@ class RestApiServlet extends ScalatraServlet with ScalateSupport with JsonHelper
   }
 
   post("/v1/users/:id/cards") {
-    val db = new RestGraphDatabase("http://localhost:7474/db/data");
+    val db = new RestGraphDatabase("http://localhost:7474/db/data")
 
     val json = parse(request.body) transform {
       case JField("card_id", _) => JField("card_id", None: Option[Int])
@@ -209,7 +209,7 @@ class RestApiServlet extends ScalatraServlet with ScalateSupport with JsonHelper
   }
 
   get("/v1/users/:user_id/cards") {
-    val db = new RestGraphDatabase("http://localhost:7474/db/data");
+    val db = new RestGraphDatabase("http://localhost:7474/db/data")
 
     val cards = getAllCards(db, params("user_id").toInt)
 
