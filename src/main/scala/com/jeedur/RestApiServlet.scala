@@ -14,6 +14,8 @@ import collection.JavaConversions.asScalaIterator
 
 
 class RestApiServlet extends ScalatraServlet with ScalateSupport with JsonHelpers {
+  val neo4jURI = "http://localhost:7474/db/data"
+
   implicit def iterableToList(x: Iterable[Relationship]): List[Relationship] = x.iterator().toList
 
   def createUser(db: GraphDatabaseAPI, user: User): Node = {
@@ -155,17 +157,17 @@ class RestApiServlet extends ScalatraServlet with ScalateSupport with JsonHelper
 
 
   get("/v1/users/:id") {
-    val db = new RestGraphDatabase("http://localhost:7474/db/data")
+    val db = new RestGraphDatabase(neo4jURI)
     getUser(db, params("id").toInt).toString
   }
 
   get("/v1/users") {
-    val db = new RestGraphDatabase("http://localhost:7474/db/data")
+    val db = new RestGraphDatabase(neo4jURI)
     getUser(db, 30)
   }
 
   post("/v1/users") {
-    val db = new RestGraphDatabase("http://localhost:7474/db/data")
+    val db = new RestGraphDatabase(neo4jURI)
 
     val json = parse(request.body) transform {
       case JField("password", JString(x)) => JField("passhash", JString(SCryptUtil.scrypt(x, 65536, 8, 1))) // 2^14
@@ -182,7 +184,7 @@ class RestApiServlet extends ScalatraServlet with ScalateSupport with JsonHelper
   }
 
   post("/v1/users/:id/cards") {
-    val db = new RestGraphDatabase("http://localhost:7474/db/data")
+    val db = new RestGraphDatabase(neo4jURI)
 
     val json = parse(request.body) transform {
       case JField("card_id", _) => JField("card_id", None: Option[Int])
@@ -196,7 +198,7 @@ class RestApiServlet extends ScalatraServlet with ScalateSupport with JsonHelper
   }
 
   get("/v1/users/:user_id/cards") {
-    val db = new RestGraphDatabase("http://localhost:7474/db/data")
+    val db = new RestGraphDatabase(neo4jURI)
 
     val cards = getAllCards(db, params("user_id").toInt)
 
@@ -205,7 +207,7 @@ class RestApiServlet extends ScalatraServlet with ScalateSupport with JsonHelper
 
 
   get("/v1/users/:user_id/cards/:card_id") {
-    val db = new RestGraphDatabase("http://localhost:7474/db/data")
+    val db = new RestGraphDatabase(neo4jURI)
     val card_id = params("card_id").toInt
     val user_id = params("user_id").toInt
     val card = getCard(db, card_id, user_id)
