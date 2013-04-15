@@ -67,8 +67,6 @@ object User {
   }
 }
 
-case class User(username: String,
-                user_id: Option[Int],
-                email: String,
-                join_date: DateTime,
-                passhash: String)
+case class User(username: String, user_id: Option[Int], email: String, join_date: DateTime, passhash: String)
+
+case class UserAccountApplication(username: String, email: String, password: String)
