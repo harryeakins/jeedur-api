@@ -109,16 +109,12 @@ class RestApiServlet extends ScalatraServlet with ScalateSupport with JsonHelper
   post("/v1/users/:id/cards") {
     val db = new RestGraphDatabase(neo4jURI)
     val app = parse(request.body).extract[CardCreationApplication]
-    val userNode = User.getNode(db, params("id").toString.toInt)
     val card = Card.from(app)
-    val cardNode = Card.save(db, card)
-    val tx = db.beginTx()
-    try {
-      userNode.createRelationshipTo(cardNode, CREATED_CARD)
-      tx.success()
-    } finally {
-      tx.finish()
-    }
+    Card.save(db, card)
+
+    val user_id = params("id").toInt
+    val user = User.get(db, user_id)
+    Card.setCreatedBy(db, card, user)
     write(card)
   }
 

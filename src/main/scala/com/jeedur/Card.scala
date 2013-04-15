@@ -4,10 +4,23 @@ import org.neo4j.graphdb.Node
 import org.joda.time.DateTime
 import org.neo4j.kernel.GraphDatabaseAPI
 import net.liftweb.json.Serialization._
+import com.jeedur.JeedurRelationships._
 import scala.Some
 
 
 object Card {
+  def setCreatedBy(db: GraphDatabaseAPI, card: Card, user: User) {
+    val tx = db.beginTx()
+    try {
+      val userNode = User.getNode(db, user.user_id.get)
+      val cardNode = Card.getNode(db, card.card_id.get)
+      userNode.createRelationshipTo(cardNode, CREATED_CARD)
+      tx.success()
+    } finally {
+      tx.finish()
+    }
+  }
+
   implicit val formats = net.liftweb.json.DefaultFormats
 
   def from(node: Node) = {
