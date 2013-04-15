@@ -6,6 +6,8 @@ import com.lambdaworks.crypto.SCryptUtil
 import org.neo4j.kernel.GraphDatabaseAPI
 
 object User {
+  val EMAIL_REGEX = """\b[a-zA-Z0-9.!#$%&’*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\b""".r
+
   def from(node: Node) = {
     implicit def tos(x: AnyRef): String = x.toString
     implicit def todt(x: AnyRef): DateTime = new DateTime(x)
@@ -18,7 +20,12 @@ object User {
   }
 
   def from(app: UserAccountApplication) = {
-    if (!app.email.contains("@")) throw new JeedurException(400, ErrorMessages.EMAIL_ADDRESS_INVALID)
+    if (EMAIL_REGEX.findFirstIn(app.email) == None) {
+      throw new JeedurException(400, ErrorMessages.EMAIL_ADDRESS_INVALID)
+    }
+    if (app.password.length < 8) {
+      throw new JeedurException(400, ErrorMessages.PASSWORD_NOT_LONG_ENOUGH)
+    }
     val passhash = SCryptUtil.scrypt(app.password, 65536, 8, 1)
     val join_date = DateTime.now()
     val user_id = Counters.get("user_id")

@@ -25,6 +25,13 @@ class RestApiSpec extends ScalatraSuite with WordSpec with JsonHelpers {
         message should equal(ErrorMessages.EMAIL_ADDRESS_INVALID)
       }
     }
+    "not allow short passwords" in {
+      post("/v1/users", """{"username":"Yoda", "email":"yoda@theforce.co.uk", "password":"hello"}""") {
+        status should equal(400)
+        val JString(message) = jsonResponse \ "message"
+        message should equal(ErrorMessages.PASSWORD_NOT_LONG_ENOUGH)
+      }
+    }
     "error if required fields not present" in {
       post("/v1/users", """{"username":"Yoda", "password":"lollipop"}""") {
         status should equal(400)
