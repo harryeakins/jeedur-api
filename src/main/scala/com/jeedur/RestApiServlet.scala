@@ -78,7 +78,6 @@ class RestApiServlet extends ScalatraServlet with ScalateSupport with JsonHelper
     contentType = "application/json;charset=UTF-8"
   }
 
-
   get("/v1/users/:id") {
     val db = new RestGraphDatabase(neo4jURI)
     getUser(db, params("id").toInt).toString
@@ -91,24 +90,15 @@ class RestApiServlet extends ScalatraServlet with ScalateSupport with JsonHelper
 
   post("/v1/users") {
     val db = new RestGraphDatabase(neo4jURI)
-    val app =
-      try {
-        parse(request.body).extract[UserAccountApplication]
-      } catch {
-        case e: MappingException => throw new JeedurException(400, ErrorMessages.REQUIRED_FIELD_NOT_PRESENT)
-      }
+    val UserAccountApplication(app) = request.body
     val user = User.from(app)
     user.save(db)
     write(user)
   }
 
-  get("/error") {
-    throw new RuntimeException("oh noez")
-  }
-
   post("/v1/users/:id/cards") {
     val db = new RestGraphDatabase(neo4jURI)
-    val app = parse(request.body).extract[CardCreationApplication]
+    val CardCreationApplication(app) = request.body
     val card = Card.from(app)
     card.save(db)
 
@@ -144,6 +134,10 @@ class RestApiServlet extends ScalatraServlet with ScalateSupport with JsonHelper
       status(500)
       contentType = "application/json;charset=UTF-8"
       compact(render(("message" -> "Internal error.")))
+  }
+
+  get("/error") {
+    throw new RuntimeException("oh noez")
   }
 
   notFound {

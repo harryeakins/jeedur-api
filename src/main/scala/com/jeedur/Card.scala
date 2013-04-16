@@ -5,8 +5,8 @@ import org.joda.time.DateTime
 import org.neo4j.kernel.GraphDatabaseAPI
 import net.liftweb.json.Serialization._
 import com.jeedur.JeedurRelationships._
+import net.liftweb.json._
 import scala.Some
-import net.liftweb.json.DefaultFormats
 
 object Card {
   def from(node: Node): Card = {
@@ -78,4 +78,17 @@ class Card(val card_id: Option[Int],
   }
 }
 
-case class CardCreationApplication(front: String, back: String, tags: Set[String])
+object CardCreationApplication {
+  def unapply(s: String): Option[CardCreationApplication] = {
+    implicit val formats = DefaultFormats
+    try {
+      Some(parse(s).extract[CardCreationApplication])
+    } catch {
+      case e: MappingException => throw new JeedurException(400, ErrorMessages.REQUIRED_FIELD_NOT_PRESENT)
+    }
+  }
+}
+
+class CardCreationApplication(val front: String,
+                              val back: String,
+                              val tags: Set[String])

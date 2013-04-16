@@ -4,6 +4,8 @@ import org.neo4j.graphdb.Node
 import org.joda.time.DateTime
 import com.lambdaworks.crypto.SCryptUtil
 import org.neo4j.kernel.GraphDatabaseAPI
+import net.liftweb.json._
+import scala.Some
 
 object User {
   val EMAIL_REGEX = """\b[a-zA-Z0-9.!#$%&’*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\b""".r
@@ -73,4 +75,17 @@ class User(val username: String,
   }
 }
 
-case class UserAccountApplication(username: String, email: String, password: String)
+object UserAccountApplication {
+  def unapply(s: String): Option[UserAccountApplication] = {
+    implicit val formats = DefaultFormats
+    try {
+      Some(parse(s).extract[UserAccountApplication])
+    } catch {
+      case e: MappingException => throw new JeedurException(400, ErrorMessages.REQUIRED_FIELD_NOT_PRESENT)
+    }
+  }
+}
+
+class UserAccountApplication(val username: String,
+                             val email: String,
+                             val password: String)
