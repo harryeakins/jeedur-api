@@ -6,11 +6,6 @@ import net.liftweb.json._
 import net.liftweb.json.Serialization.write
 import net.liftweb.json.JsonDSL._
 import org.neo4j.rest.graphdb.RestGraphDatabase
-import org.neo4j.kernel.GraphDatabaseAPI
-import org.neo4j.graphdb.{Relationship, Node}
-import JeedurRelationships._
-import java.lang.Iterable
-import collection.JavaConversions.asScalaIterator
 
 object RestApiServlet {
   val neo4jURI = "http://localhost:7474/db/data"
@@ -19,56 +14,6 @@ object RestApiServlet {
 class RestApiServlet extends ScalatraServlet with ScalateSupport with JsonHelpers {
 
   import RestApiServlet.neo4jURI
-
-  implicit def iterableToList(x: Iterable[Relationship]): List[Relationship] = x.iterator().toList
-
-  def getUserNode(db: GraphDatabaseAPI, user_id: Int): Node = {
-    val tx = db.beginTx()
-    try {
-      val index = db.index().forNodes("users")
-      val node = index.query("user_id", user_id).getSingle
-
-      tx.success()
-      node
-    } finally {
-      tx.finish()
-    }
-  }
-
-  def getCard(db: GraphDatabaseAPI, card_id: Int, user_id: Int): Card = {
-    val tx = db.beginTx()
-    try {
-      val index = db.index().forNodes("cards")
-      val node = index.query("card_id", card_id).getSingle
-      val relationships = node.getRelationships
-      val ownedByUser = relationships.exists {
-        x =>
-          val userNode = x.getOtherNode(node)
-          User.from(userNode).user_id.get == user_id
-      }
-      require(ownedByUser)
-
-      val card = Card.from(node)
-
-      tx.success()
-      card
-    } finally {
-      tx.finish()
-    }
-  }
-
-  def getAllCards(db: GraphDatabaseAPI, user_id: Int): List[Card] = {
-    val tx = db.beginTx()
-    try {
-      val userNode = getUserNode(db, user_id)
-      var cards = userNode.getRelationships(CREATED_CARD).map(rel => Card.from(rel.getEndNode))
-
-      tx.success()
-      cards
-    } finally {
-      tx.finish()
-    }
-  }
 
   before("/v1/*") {
     contentType = "application/json;charset=UTF-8"
@@ -105,7 +50,7 @@ class RestApiServlet extends ScalatraServlet with ScalateSupport with JsonHelper
 
   get("/v1/users/:user_id/cards") {
     val db = new RestGraphDatabase(neo4jURI)
-    val cards = getAllCards(db, params("user_id").toInt)
+    val cards = Card.getAllFromUser(db, params("user_id").toInt)
     write(cards)
   }
 
@@ -114,7 +59,7 @@ class RestApiServlet extends ScalatraServlet with ScalateSupport with JsonHelper
     val db = new RestGraphDatabase(neo4jURI)
     val card_id = params("card_id").toInt
     val user_id = params("user_id").toInt
-    val card = getCard(db, card_id, user_id)
+    val card = Card.getCard(db, card_id, user_id)
 
     write(card)
   }

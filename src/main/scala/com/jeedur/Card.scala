@@ -1,14 +1,18 @@
 package com.jeedur
 
-import org.neo4j.graphdb.Node
+import org.neo4j.graphdb.{Relationship, Node}
 import org.joda.time.DateTime
 import org.neo4j.kernel.GraphDatabaseAPI
 import net.liftweb.json.Serialization._
 import com.jeedur.JeedurRelationships._
 import net.liftweb.json._
 import scala.Some
+import java.lang.Iterable
+import collection.JavaConversions.asScalaIterator
 
 object Card {
+  implicit def iterableToList(x: Iterable[Relationship]): List[Relationship] = x.iterator().toList
+
   def from(node: Node): Card = {
     implicit val formats = DefaultFormats
     implicit def tos(x: AnyRef): String = x.toString
@@ -34,6 +38,39 @@ object Card {
       val node = db.index().forNodes("cards").query("card_id:" + card_id).getSingle
       tx.success()
       node
+    } finally {
+      tx.finish()
+    }
+  }
+
+  def getCard(db: GraphDatabaseAPI, card_id: Int, user_id: Int): Card = {
+    val tx = db.beginTx()
+    try {
+      val cardNode = Card.getNode(db, card_id)
+      val relationships = cardNode.getRelationships
+      val ownedByUser = relationships.exists {
+        x =>
+          val userNode = x.getOtherNode(cardNode)
+          User.from(userNode).user_id.get == user_id
+      }
+      require(ownedByUser)
+
+      val card = Card.from(cardNode)
+
+      tx.success()
+      card
+    } finally {
+      tx.finish()
+    }
+  }
+
+  def getAllFromUser(db: GraphDatabaseAPI, user_id: Int): List[Card] = {
+    val tx = db.beginTx()
+    try {
+      val userNode = User.getNode(db, user_id)
+      val cards = userNode.getRelationships(CREATED_CARD).map(rel => Card.from(rel.getEndNode))
+      tx.success()
+      cards
     } finally {
       tx.finish()
     }
