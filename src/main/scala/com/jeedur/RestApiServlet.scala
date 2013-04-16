@@ -35,10 +35,6 @@ class RestApiServlet extends ScalatraServlet with ScalateSupport with JsonHelper
     }
   }
 
-  def getUser(db: GraphDatabaseAPI, user_id: Int): User = {
-    User.from(getUserNode(db, user_id))
-  }
-
   def getCard(db: GraphDatabaseAPI, card_id: Int, user_id: Int): Card = {
     val tx = db.beginTx()
     try {
@@ -80,12 +76,11 @@ class RestApiServlet extends ScalatraServlet with ScalateSupport with JsonHelper
 
   get("/v1/users/:id") {
     val db = new RestGraphDatabase(neo4jURI)
-    getUser(db, params("id").toInt).toString
+    write(User.get(db, params("id").toInt))
   }
 
   get("/v1/users") {
-    val db = new RestGraphDatabase(neo4jURI)
-    getUser(db, 30)
+    throw new JeedurException(403, ErrorMessages.GET_ALL_USERS_FORBIDDEN)
   }
 
   post("/v1/users") {

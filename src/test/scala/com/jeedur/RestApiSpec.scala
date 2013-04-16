@@ -80,6 +80,31 @@ class RestApiSpec extends ScalatraSuite with WordSpec with JsonHelpers {
     }
   }
 
+  "get /v1/users" should {
+    "return error message with appropriate status code" in {
+      get("/v1/users") {
+        status should equal(403)
+        val JString(message) = jsonResponse \ "message"
+        message should equal(ErrorMessages.GET_ALL_USERS_FORBIDDEN)
+      }
+    }
+  }
+
+  "get /v1/users/:id" should {
+    "return appropriate user account info" in {
+      post("/v1/users", """{"username":"Yoda", "email":"yoda@theforce.co.uk", "password":"lollipop"}""") {
+        val JInt(user_id) = jsonResponse \ "user_id"
+        get("/v1/users/" + user_id) {
+          status should equal(200)
+          val user = jsonResponse.extract[User]
+          user.user_id.get should equal(user_id)
+          user.username should equal("Yoda")
+          user.email should equal("yoda@theforce.co.uk")
+        }
+      }
+    }
+  }
+
   "get /error" should {
     "return general message with appropriate status code" in {
       get("/error") {
