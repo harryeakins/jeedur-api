@@ -98,7 +98,7 @@ class RestApiServlet extends ScalatraServlet with ScalateSupport with JsonHelper
         case e: MappingException => throw new JeedurException(400, ErrorMessages.REQUIRED_FIELD_NOT_PRESENT)
       }
     val user = User.from(app)
-    User.save(db, user)
+    user.save(db)
     write(user)
   }
 
