@@ -98,7 +98,7 @@ class RestApiServlet extends ScalatraServlet with ScalateSupport with JsonHelper
         case e: MappingException => throw new JeedurException(400, ErrorMessages.REQUIRED_FIELD_NOT_PRESENT)
       }
     val user = User.from(app)
-    val node = User.save(db, user)
+    User.save(db, user)
     write(user)
   }
 
@@ -110,19 +110,17 @@ class RestApiServlet extends ScalatraServlet with ScalateSupport with JsonHelper
     val db = new RestGraphDatabase(neo4jURI)
     val app = parse(request.body).extract[CardCreationApplication]
     val card = Card.from(app)
-    Card.save(db, card)
+    card.save(db)
 
     val user_id = params("id").toInt
     val user = User.get(db, user_id)
-    Card.setCreatedBy(db, card, user)
+    card.setCreatedBy(db, user)
     write(card)
   }
 
   get("/v1/users/:user_id/cards") {
     val db = new RestGraphDatabase(neo4jURI)
-
     val cards = getAllCards(db, params("user_id").toInt)
-
     write(cards)
   }
 
@@ -132,6 +130,7 @@ class RestApiServlet extends ScalatraServlet with ScalateSupport with JsonHelper
     val card_id = params("card_id").toInt
     val user_id = params("user_id").toInt
     val card = getCard(db, card_id, user_id)
+
     write(card)
   }
 
