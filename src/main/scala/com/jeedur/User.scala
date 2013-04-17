@@ -1,11 +1,18 @@
 package com.jeedur
 
-import org.neo4j.graphdb.Node
+import org.neo4j.graphdb.{Node, Relationship}
+import org.neo4j.graphdb.Direction._
 import org.joda.time.DateTime
 import com.lambdaworks.crypto.SCryptUtil
 import org.neo4j.kernel.GraphDatabaseAPI
+import JeedurRelationships._
+import collection.JavaConversions.asScalaIterator
+import java.lang.Iterable
+import net.liftweb.json.Serialization._
 import net.liftweb.json._
 import scala.Some
+import net.liftweb.json.MappingException
+
 
 object User {
   val EMAIL_REGEX = """\b[a-zA-Z0-9.!#$%&’*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\b""".r
@@ -72,6 +79,60 @@ class User(val username: String,
     } finally {
       tx.finish()
     }
+  }
+
+  def getNode(db: GraphDatabaseAPI): Node = {
+    val tx = db.beginTx()
+    try {
+      val node = db.index().forNodes("users").query("user_id", user_id.get).getSingle
+      tx.success()
+      node
+    } finally {
+      tx.finish()
+    }
+  }
+
+  def addStudiesRelationship(db: GraphDatabaseAPI, card: Card): Relationship = {
+    val tx = db.beginTx()
+    try {
+      val rel = getNode(db).createRelationshipTo(card.getNode(db), STUDIES)
+      rel.setProperty("review_history", "[]")
+      rel.setProperty("active", true)
+      rel.setProperty("create_date", DateTime.now())
+      tx.success()
+      rel
+    } finally {
+      tx.finish()
+    }
+  }
+
+  def getStudiesRelationship(db: GraphDatabaseAPI, card: Card): Option[Relationship] = {
+    implicit def iterableToList(x: Iterable[Relationship]): List[Relationship] = x.iterator().toList
+    val tx = db.beginTx()
+    try {
+      val userNode = getNode(db)
+      val rels = userNode.getRelationships(OUTGOING, STUDIES).filter {
+        rel => rel.getEndNode.getProperty("card_id") == card.card_id.get
+      }
+      require(rels.length == 1 || rels.length == 0)
+      if (rels.length == 0) {
+        return None
+      }
+      val rel = rels(0)
+      tx.success()
+      Some(rel)
+    } finally {
+      tx.finish()
+    }
+  }
+
+  def recordReview(db: GraphDatabaseAPI, card: Card, review: Review) = {
+    implicit val formats = DefaultFormats
+
+    val rel = getStudiesRelationship(db, card).get
+    val reviewHistoryJson = rel.getProperty("review_history").toString
+    val reviewHistory = read[List[String]](reviewHistoryJson)
+    rel.setProperty("review_history", write(review.toString :: reviewHistory))
   }
 }
 

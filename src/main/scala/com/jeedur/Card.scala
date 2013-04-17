@@ -113,6 +113,17 @@ class Card(val card_id: Option[Int],
       tx.finish()
     }
   }
+
+  def getNode(db: GraphDatabaseAPI): Node = {
+    val tx = db.beginTx()
+    try {
+      val node = db.index().forNodes("cards").query("card_id", card_id.get).getSingle
+      tx.success()
+      node
+    } finally {
+      tx.finish()
+    }
+  }
 }
 
 object CardCreationApplication {

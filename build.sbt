@@ -23,7 +23,8 @@ libraryDependencies ++= Seq(
   "org.scalatra" %% "scalatra-scalatest" % "2.0.4" % "test",
   "org.neo4j" % "neo4j-rest-graphdb" % "1.8.RC2",
   "org.scalaj" %% "scalaj-time" % "0.6",
-  "com.lambdaworks" % "scrypt" % "1.3.3"
+  "com.lambdaworks" % "scrypt" % "1.3.3",
+  "org.neo4j" % "neo4j-cypher" % "1.8.2"
 )
 
 

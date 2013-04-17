@@ -45,6 +45,7 @@ class RestApiServlet extends ScalatraServlet with ScalateSupport with JsonHelper
     val user_id = params("id").toInt
     val user = User.get(db, user_id)
     card.setCreatedBy(db, user)
+    user.addStudiesRelationship(db, card)
     write(card)
   }
 
