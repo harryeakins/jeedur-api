@@ -14,6 +14,7 @@ object RestApiServlet {
 class RestApiServlet extends ScalatraServlet with ScalateSupport with JsonHelpers {
 
   import RestApiServlet.neo4jURI
+  import JeedurUtils._
 
   before("/v1/*") {
     contentType = "application/json;charset=UTF-8"
@@ -52,7 +53,31 @@ class RestApiServlet extends ScalatraServlet with ScalateSupport with JsonHelper
   get("/v1/users/:user_id/cards") {
     val db = new RestGraphDatabase(neo4jURI)
     val cards = Card.getAllFromUser(db, params("user_id").toInt)
-    write(cards)
+    val limit =
+      try {
+        getParameter(request, "limit").getOrElse("10").toInt
+      } catch {
+        case e: NumberFormatException => throw new JeedurException(403, ErrorMessages.QUERY_PARAMETERS_NOT_VALID)
+      }
+
+    val offset =
+      try {
+        getParameter(request, "offset").getOrElse("0").toInt
+      } catch {
+        case e: NumberFormatException => throw new JeedurException(403, ErrorMessages.QUERY_PARAMETERS_NOT_VALID)
+      }
+
+    val tags = getParameter(request, "tags").getOrElse("")
+
+    val filtered_cards =
+      if (tags.equals("")) cards
+      else cards.filter {
+        x => x.tags.exists {
+          s => tags.split(",").contains(s)
+        }
+      }
+
+    write(filtered_cards.slice(offset, offset + limit))
   }
 
 

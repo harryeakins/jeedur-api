@@ -105,6 +105,80 @@ class RestApiSpec extends ScalatraSuite with WordSpec with JsonHelpers {
     }
   }
 
+  def multiplePosts[A](user_id: BigInt, bodies: List[String])(f: => A): A = {
+    if (bodies.size > 1) {
+      post("/v1/users/" + user_id + "/cards", bodies(0)) {
+        status should equal(200)
+        multiplePosts(user_id, bodies.tail)(f)
+      }
+    } else {
+      post("/v1/users/" + user_id + "/cards", bodies(0)) {
+        f
+      }
+    }
+  }
+
+  val cards = List( """{"front":"Hello", "back":"你好", "tags":["chinese", "lesson01"]}""",
+    """{"front":"Goodbye", "back":"再见", "tags":["chinese", "lesson01"]}""",
+    """{"front":"Thankyou", "back":"谢谢", "tags":["chinese", "lesson01"]}""",
+    """{"front":"Weather", "back":"天气", "tags":["chinese", "lesson01"]}""",
+    """{"front":"Friend", "back":"朋友", "tags":["chinese", "lesson01"]}""",
+    """{"front":"Pig", "back":"猪", "tags":["chinese", "animals"]}""",
+    """{"front":"Cat", "back":"猫", "tags":["chinese", "animals"]}""",
+    """{"front":"Dog", "back":"狗", "tags":["chinese", "animals"]}""",
+    """{"front":"Sheep", "back":"样", "tags":["chinese", "animals"]}""",
+    """{"front":"Snake", "back":"小龙", "tags":["chinese", "animals"]}""")
+
+  "get /v1/users/:id/cards" should {
+    "return cards in an appropriate order" in {
+      post("/v1/users", """{"username":"Yoda", "email":"yoda@theforce.co.uk", "password":"lollipop"}""") {
+        val JInt(user_id) = jsonResponse \ "user_id"
+        multiplePosts(user_id, cards) {
+          status should equal(200)
+          get("/v1/users/" + user_id + "/cards") {
+            status should equal(200)
+            val JArray(jsonCards) = jsonResponse
+            val cards = jsonCards.map(jsonCard => jsonCard.extract[Card])
+            cards.length should equal(10)
+          }
+          get("/v1/users/" + user_id + "/cards?limit=5") {
+            status should equal(200)
+            val JArray(jsonCards) = jsonResponse
+            val cards = jsonCards.map(jsonCard => jsonCard.extract[Card])
+            cards.length should equal(5)
+          }
+          get("/v1/users/" + user_id + "/cards?limit=5&offset=6") {
+            status should equal(200)
+            val JArray(jsonCards) = jsonResponse
+            val cards = jsonCards.map(jsonCard => jsonCard.extract[Card])
+            cards.length should equal(4)
+          }
+          get("/v1/users/" + user_id + "/cards?tags=animals") {
+            status should equal(200)
+            val JArray(jsonCards) = jsonResponse
+            val cards = jsonCards.map(jsonCard => jsonCard.extract[Card])
+            cards.length should equal(5)
+            cards.foreach {
+              card =>
+                card.tags should contain("animals")
+            }
+          }
+          get("/v1/users/" + user_id + "/cards?tags=animals&offset=3") {
+            status should equal(200)
+            val JArray(jsonCards) = jsonResponse
+            val cards = jsonCards.map(jsonCard => jsonCard.extract[Card])
+            cards.length should equal(2)
+          }
+          get("/v1/users/" + user_id + "/cards?limit=pig") {
+            status should equal(403)
+            val JString(message) = jsonResponse \ "message"
+            message should equal(ErrorMessages.QUERY_PARAMETERS_NOT_VALID)
+          }
+        }
+      }
+    }
+  }
+
   "get /error" should {
     "return general message with appropriate status code" in {
       get("/error") {
