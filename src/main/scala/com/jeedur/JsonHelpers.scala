@@ -6,7 +6,7 @@ trait JsonHelpers {
   import net.liftweb.json.ext._
   import net.liftweb.json.Extraction._
 
-  implicit val formats = DefaultFormats ++ JodaTimeSerializers.all
+  implicit val formats = DefaultFormats ++ JodaTimeSerializers.all + new EnumNameSerializer(Difficulty)
 
   object Json {
     def apply(json: JValue, compacting: Boolean) = {
