@@ -3,6 +3,7 @@ package com.jeedur
 import org.scalatra._
 import scalate.ScalateSupport
 import net.liftweb.json._
+import ext.JodaTimeSerializers
 import net.liftweb.json.Serialization.write
 import net.liftweb.json.JsonDSL._
 import org.neo4j.rest.graphdb.RestGraphDatabase
@@ -12,6 +13,8 @@ object RestApiServlet {
 }
 
 class RestApiServlet extends ScalatraServlet with ScalateSupport with JsonHelpers {
+
+  implicit override val formats = DefaultFormats ++ JodaTimeSerializers.all + new ReviewSerializer
 
   import RestApiServlet.neo4jURI
   import JeedurUtils._
@@ -88,6 +91,17 @@ class RestApiServlet extends ScalatraServlet with ScalateSupport with JsonHelper
     val card = Card.getCard(db, card_id, user_id)
 
     write(card)
+  }
+
+  post("/v1/users/:user_id/cards/:card_id/reviews") {
+    val db = new RestGraphDatabase(neo4jURI)
+    val card_id = params("card_id").toInt
+    val user_id = params("user_id").toInt
+    val card = Card.getCard(db, card_id, user_id)
+    val user = User.get(db, user_id)
+    var Review(r) = request.body
+    user.recordReview(db, card, r)
+    write(r)
   }
 
   error {

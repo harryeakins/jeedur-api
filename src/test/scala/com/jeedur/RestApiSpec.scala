@@ -4,9 +4,12 @@ import org.scalatra.test.scalatest._
 import org.scalatest.WordSpec
 import net.liftweb.json
 import net.liftweb.json._
+import ext.JodaTimeSerializers
+import org.joda.time.{Interval, DateTime}
 
 class RestApiSpec extends ScalatraSuite with WordSpec with JsonHelpers {
   addServlet(new RestApiServlet, "/*")
+  implicit override val formats = DefaultFormats ++ JodaTimeSerializers.all + new ReviewSerializer
 
   "post users" should {
     "return newly created user info" in {
@@ -182,12 +185,22 @@ class RestApiSpec extends ScalatraSuite with WordSpec with JsonHelpers {
             status should equal(200)
             val JArray(jsonCards) = jsonResponse
             val cards = jsonCards.map(jsonCard => jsonCard.extract[Card])
-            cards.length should equal(2)
+            cards should have size 2
           }
           get("/v1/users/" + user_id + "/cards?limit=pig") {
             status should equal(403)
             val JString(message) = jsonResponse \ "message"
             message should equal(ErrorMessages.QUERY_PARAMETERS_NOT_VALID)
+          }
+          val JInt(card_id) = jsonResponse \ "card_id"
+          post("/v1/users/" + user_id + "/cards/" + card_id + "/reviews", """{"timeOnFront": 12, "timeOnBack": 32, "difficulty": "EASY"}""") {
+            status should equal(200)
+            val review = jsonResponse.extract[Review]
+            review.difficulty should equal(Difficulty.EASY)
+            review.timeOnFront should equal(12.0)
+            review.timeOnBack should equal(32.0)
+            val duration = new Interval(review.reviewDate, DateTime.now()).toDurationMillis
+            duration should be < 1000L
           }
         }
       }
