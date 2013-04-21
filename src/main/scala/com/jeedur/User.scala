@@ -57,7 +57,7 @@ class User(val username: String,
            val user_id: Option[Int],
            val email: String,
            val join_date: DateTime,
-           val passhash: String) {
+           val passhash: String) extends JsonHelpers {
   def save(db: GraphDatabaseAPI) {
     withinDbTransaction(db) {
       val node = db.createNode()
@@ -104,18 +104,15 @@ class User(val username: String,
   }
 
   def recordReview(db: GraphDatabaseAPI, card: Card, review: Review) {
-    implicit val formats = DefaultFormats
-
     val rel = getStudiesRelationship(db, card).get
     val reviewHistoryJson = rel.getProperty("review_history").toString
-    val reviewHistory = read[List[String]](reviewHistoryJson)
-    rel.setProperty("review_history", write(review.toString :: reviewHistory))
+    val reviewHistory = parse(reviewHistoryJson).extract[List[Review]]
+    rel.setProperty("review_history", write(review :: reviewHistory))
   }
 }
 
-object UserAccountApplication {
+object UserAccountApplication extends JsonHelpers {
   def unapply(s: String): Option[UserAccountApplication] = {
-    implicit val formats = DefaultFormats
     try {
       Some(parse(s).extract[UserAccountApplication])
     } catch {

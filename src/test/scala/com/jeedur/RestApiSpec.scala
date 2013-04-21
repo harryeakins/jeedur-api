@@ -4,7 +4,6 @@ import org.scalatra.test.scalatest._
 import org.scalatest.WordSpec
 import net.liftweb.json
 import net.liftweb.json._
-import org.joda.time.{Interval, DateTime}
 
 class RestApiSpec extends ScalatraSuite with WordSpec with JsonHelpers {
   addServlet(new RestApiServlet, "/*")
@@ -196,8 +195,6 @@ class RestApiSpec extends ScalatraSuite with WordSpec with JsonHelpers {
             review.difficulty should equal(Difficulty.EASY)
             review.timeOnFront should equal(12.0)
             review.timeOnBack should equal(32.0)
-            val duration = new Interval(review.reviewDate, DateTime.now()).toDurationMillis
-            duration should be < 5000L
           }
           post("/v1/users/" + user_id + "/cards/" + card_id + "/reviews", """{"difficulty": "EASY", "timeOnBack": 32, "timeOnFront": 12}""") {
             status should equal(200)
@@ -205,8 +202,6 @@ class RestApiSpec extends ScalatraSuite with WordSpec with JsonHelpers {
             review.difficulty should equal(Difficulty.EASY)
             review.timeOnFront should equal(12.0)
             review.timeOnBack should equal(32.0)
-            val duration = new Interval(review.reviewDate, DateTime.now()).toDurationMillis
-            duration should be < 5000L
           }
         }
       }
