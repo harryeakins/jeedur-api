@@ -67,6 +67,7 @@ class Card(val card_id: Option[Int],
            val back: String,
            val tags: Set[String],
            val create_date: DateTime) {
+  if (tags.size == 0) throw new JeedurException(403, ErrorMessages.CARDS_MUST_HAVE_TAGS)
 
   def setCreatedBy(db: GraphDatabaseAPI, user: User) {
     withinDbTransaction(db) {

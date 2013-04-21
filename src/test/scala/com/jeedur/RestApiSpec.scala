@@ -76,6 +76,11 @@ class RestApiSpec extends ScalatraSuite with WordSpec with JsonHelpers {
             tags should contain("lesson01")
           }
         }
+        post("/v1/users/" + user_id + "/cards", """{"front":"Hello", "back":"你好", "tags":[]}""") {
+          status should equal(403)
+          val JString(message) = jsonResponse \ "message"
+          message should equal(ErrorMessages.CARDS_MUST_HAVE_TAGS)
+        }
       }
     }
   }

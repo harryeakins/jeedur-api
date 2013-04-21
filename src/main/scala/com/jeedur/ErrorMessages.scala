@@ -6,4 +6,5 @@ object ErrorMessages {
   val REQUIRED_FIELD_NOT_PRESENT = "All required fields must be present"
   val GET_ALL_USERS_FORBIDDEN = "Getting all users is forbidden"
   val QUERY_PARAMETERS_NOT_VALID = "Some of the query parameter list was invalid"
+  val CARDS_MUST_HAVE_TAGS = "Card must have at least one tag"
 }
