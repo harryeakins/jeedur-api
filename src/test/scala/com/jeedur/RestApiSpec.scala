@@ -132,7 +132,8 @@ class RestApiSpec extends ScalatraSuite with WordSpec with JsonHelpers {
     """{"front":"Cat", "back":"猫", "tags":["chinese", "animals"]}""",
     """{"front":"Dog", "back":"狗", "tags":["chinese", "animals"]}""",
     """{"front":"Sheep", "back":"样", "tags":["chinese", "animals"]}""",
-    """{"front":"Snake", "back":"小龙", "tags":["chinese", "animals"]}""")
+    """{"front":"Snake", "back":"小龙", "tags":["chinese", "animals"]}""",
+    """{"front":"noodles", "back":"面", "tags":["chinese", "food"]}""")
 
   "get /v1/users/:id/cards" should {
     "return cards in an appropriate order" in {
@@ -152,7 +153,7 @@ class RestApiSpec extends ScalatraSuite with WordSpec with JsonHelpers {
             val cards = jsonCards.map(jsonCard => jsonCard.extract[Card])
             cards.length should equal(5)
           }
-          get("/v1/users/" + user_id + "/cards?limit=5&offset=6") {
+          get("/v1/users/" + user_id + "/cards?limit=5&offset=7") {
             status should equal(200)
             val JArray(jsonCards) = jsonResponse
             val cards = jsonCards.map(jsonCard => jsonCard.extract[Card])
@@ -166,6 +167,15 @@ class RestApiSpec extends ScalatraSuite with WordSpec with JsonHelpers {
             cards.foreach {
               card =>
                 card.tags should contain("animals")
+            }
+          }
+          get("/v1/users/" + user_id + "/cards?tags=animals,food") {
+            status should equal(200)
+            val JArray(jsonCards) = jsonResponse
+            val cards = jsonCards.map(jsonCard => jsonCard.extract[Card])
+            cards.length should equal(6)
+            cards.foreach {
+              card => card.tags.intersect(Set("animals", "food")) should not be ('empty)
             }
           }
           get("/v1/users/" + user_id + "/cards?tags=animals&offset=3") {
