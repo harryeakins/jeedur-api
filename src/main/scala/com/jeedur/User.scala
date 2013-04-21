@@ -12,6 +12,7 @@ import net.liftweb.json.Serialization._
 import net.liftweb.json._
 import scala.Some
 import net.liftweb.json.MappingException
+import JeedurUtils._
 
 
 object User {
@@ -46,13 +47,8 @@ object User {
   }
 
   def getNode(db: GraphDatabaseAPI, user_id: Int): Node = {
-    val tx = db.beginTx()
-    try {
-      val node = db.index().forNodes("users").query("user_id:" + user_id).getSingle
-      tx.success()
-      node
-    } finally {
-      tx.finish()
+    withinDbTransaction(db) {
+      db.index().forNodes("users").query("user_id:" + user_id).getSingle
     }
   }
 }
@@ -63,8 +59,7 @@ class User(val username: String,
            val join_date: DateTime,
            val passhash: String) {
   def save(db: GraphDatabaseAPI) {
-    val tx = db.beginTx()
-    try {
+    withinDbTransaction(db) {
       val node = db.createNode()
       node.setProperty("user_id", user_id.get)
       node.setProperty("username", username)
@@ -74,59 +69,41 @@ class User(val username: String,
       node.setProperty("type", "User")
 
       db.index().forNodes("users").add(node, "user_id", user_id.get)
-      tx.success()
       node
-    } finally {
-      tx.finish()
     }
   }
 
   def getNode(db: GraphDatabaseAPI): Node = {
-    val tx = db.beginTx()
-    try {
-      val node = db.index().forNodes("users").query("user_id", user_id.get).getSingle
-      tx.success()
-      node
-    } finally {
-      tx.finish()
+    withinDbTransaction(db) {
+      db.index().forNodes("users").query("user_id", user_id.get).getSingle
     }
   }
 
   def addStudiesRelationship(db: GraphDatabaseAPI, card: Card): Relationship = {
-    val tx = db.beginTx()
-    try {
+    withinDbTransaction(db) {
       val rel = getNode(db).createRelationshipTo(card.getNode(db), STUDIES)
       rel.setProperty("review_history", "[]")
       rel.setProperty("active", true)
       rel.setProperty("create_date", DateTime.now())
-      tx.success()
       rel
-    } finally {
-      tx.finish()
     }
   }
 
   def getStudiesRelationship(db: GraphDatabaseAPI, card: Card): Option[Relationship] = {
     implicit def iterableToList(x: Iterable[Relationship]): List[Relationship] = x.iterator().toList
-    val tx = db.beginTx()
-    try {
+
+    withinDbTransaction(db) {
       val userNode = getNode(db)
+      val card_id = card.card_id.getOrElse(-1)
       val rels = userNode.getRelationships(OUTGOING, STUDIES).filter {
-        rel => rel.getEndNode.getProperty("card_id") == card.card_id.get
+        _.getEndNode.getProperty("card_id") == card_id
       }
       require(rels.length == 1 || rels.length == 0)
-      if (rels.length == 0) {
-        return None
-      }
-      val rel = rels(0)
-      tx.success()
-      Some(rel)
-    } finally {
-      tx.finish()
+      if (rels.length > 0) Some(rels(0)) else None
     }
   }
 
-  def recordReview(db: GraphDatabaseAPI, card: Card, review: Review) = {
+  def recordReview(db: GraphDatabaseAPI, card: Card, review: Review) {
     implicit val formats = DefaultFormats
 
     val rel = getStudiesRelationship(db, card).get

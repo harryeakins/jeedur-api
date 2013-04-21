@@ -9,6 +9,7 @@ import net.liftweb.json._
 import scala.Some
 import java.lang.Iterable
 import collection.JavaConversions.asScalaIterator
+import JeedurUtils._
 
 object Card {
   implicit def iterableToList(x: Iterable[Relationship]): List[Relationship] = x.iterator().toList
@@ -33,19 +34,13 @@ object Card {
   }
 
   def getNode(db: GraphDatabaseAPI, card_id: Int): Node = {
-    val tx = db.beginTx()
-    try {
-      val node = db.index().forNodes("cards").query("card_id:" + card_id).getSingle
-      tx.success()
-      node
-    } finally {
-      tx.finish()
+    withinDbTransaction(db) {
+      db.index().forNodes("cards").query("card_id:" + card_id).getSingle
     }
   }
 
   def getCard(db: GraphDatabaseAPI, card_id: Int, user_id: Int): Card = {
-    val tx = db.beginTx()
-    try {
+    withinDbTransaction(db) {
       val cardNode = Card.getNode(db, card_id)
       val relationships = cardNode.getRelationships
       val ownedByUser = relationships.exists {
@@ -55,24 +50,14 @@ object Card {
       }
       require(ownedByUser)
 
-      val card = Card.from(cardNode)
-
-      tx.success()
-      card
-    } finally {
-      tx.finish()
+      Card.from(cardNode)
     }
   }
 
   def getAllFromUser(db: GraphDatabaseAPI, user_id: Int): List[Card] = {
-    val tx = db.beginTx()
-    try {
+    withinDbTransaction(db) {
       val userNode = User.getNode(db, user_id)
-      val cards = userNode.getRelationships(CREATED_CARD).map(rel => Card.from(rel.getEndNode))
-      tx.success()
-      cards
-    } finally {
-      tx.finish()
+      userNode.getRelationships(CREATED_CARD).map(rel => Card.from(rel.getEndNode))
     }
   }
 }
@@ -84,21 +69,16 @@ class Card(val card_id: Option[Int],
            val create_date: DateTime) {
 
   def setCreatedBy(db: GraphDatabaseAPI, user: User) {
-    val tx = db.beginTx()
-    try {
+    withinDbTransaction(db) {
       val userNode = User.getNode(db, user.user_id.get)
       val cardNode = Card.getNode(db, card_id.get)
       userNode.createRelationshipTo(cardNode, CREATED_CARD)
-      tx.success()
-    } finally {
-      tx.finish()
     }
   }
 
   def save(db: GraphDatabaseAPI) {
     implicit val formats = DefaultFormats
-    val tx = db.beginTx()
-    try {
+    withinDbTransaction(db) {
       val node = db.createNode()
       node.setProperty("card_id", card_id.get)
       node.setProperty("front", front)
@@ -107,21 +87,13 @@ class Card(val card_id: Option[Int],
       node.setProperty("create_date", create_date)
 
       db.index().forNodes("cards").add(node, "card_id", card_id.get)
-      tx.success()
       node
-    } finally {
-      tx.finish()
     }
   }
 
   def getNode(db: GraphDatabaseAPI): Node = {
-    val tx = db.beginTx()
-    try {
-      val node = db.index().forNodes("cards").query("card_id", card_id.get).getSingle
-      tx.success()
-      node
-    } finally {
-      tx.finish()
+    withinDbTransaction(db) {
+      db.index().forNodes("cards").query("card_id", card_id.get).getSingle
     }
   }
 }
