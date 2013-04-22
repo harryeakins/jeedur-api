@@ -203,6 +203,12 @@ class RestApiSpec extends ScalatraSuite with WordSpec with JsonHelpers {
             review.timeOnFront should equal(12.0)
             review.timeOnBack should equal(32.0)
           }
+          get("/v1/users/" + user_id + "/cards") {
+            status should equal(200)
+            val JArray(jsonCards) = jsonResponse
+            val cards = jsonCards.map(jsonCard => jsonCard.extract[Card])
+            cards.length should equal(10)
+          }
         }
       }
     }

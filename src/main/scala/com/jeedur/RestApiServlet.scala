@@ -52,7 +52,8 @@ class RestApiServlet extends ScalatraServlet with ScalateSupport with JsonHelper
 
   get("/v1/users/:user_id/cards") {
     val db = new RestGraphDatabase(neo4jURI)
-    val cards = Card.getAllFromUser(db, params("user_id").toInt)
+    val user = User.get(db, params("user_id").toInt)
+    val cards = Card.getAllFromUser(db, user.user_id.get)
     val limit =
       try {
         getParameter(request, "limit").getOrElse("10").toInt
@@ -96,9 +97,9 @@ class RestApiServlet extends ScalatraServlet with ScalateSupport with JsonHelper
     val user_id = params("user_id").toInt
     val card = Card.getCard(db, card_id, user_id)
     val user = User.get(db, user_id)
-    val r = parse(request.body).extract[Review]
-    user.recordReview(db, card, r)
-    write(r)
+    val review = parse(request.body).extract[Review]
+    user.recordReview(db, card, review)
+    write(review)
   }
 
   error {

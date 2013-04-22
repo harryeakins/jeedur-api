@@ -66,7 +66,7 @@ class Card(val card_id: Option[Int],
            val front: String,
            val back: String,
            val tags: Set[String],
-           val create_date: DateTime) {
+           val create_date: DateTime) extends JsonHelpers {
   if (tags.size == 0) throw new JeedurException(403, ErrorMessages.CARDS_MUST_HAVE_TAGS)
 
   def setCreatedBy(db: GraphDatabaseAPI, user: User) {
@@ -96,6 +96,10 @@ class Card(val card_id: Option[Int],
     withinDbTransaction(db) {
       db.index().forNodes("cards").query("card_id", card_id.get).getSingle
     }
+  }
+
+  override def toString: String = {
+    "Card(" + write(this) + ")"
   }
 }
 

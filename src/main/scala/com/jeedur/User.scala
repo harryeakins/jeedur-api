@@ -109,6 +109,17 @@ class User(val username: String,
     val reviewHistory = parse(reviewHistoryJson).extract[List[Review]]
     rel.setProperty("review_history", write(review :: reviewHistory))
   }
+
+  def getAllCardsWithHistory(db: GraphDatabaseAPI): List[(Card, List[Review])] = {
+    implicit def iterableToList[A](x: Iterable[A]): List[A] = x.iterator.toList
+    withinDbTransaction(db) {
+      val userNode = getNode(db)
+      userNode.getRelationships(STUDIES, OUTGOING).map {
+        rel => (Card.from(rel.getEndNode),
+          parse(rel.getProperty("review_history").toString).extract[List[Review]])
+      }
+    }
+  }
 }
 
 object UserAccountApplication extends JsonHelpers {
