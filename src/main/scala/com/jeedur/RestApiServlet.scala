@@ -58,7 +58,7 @@ class RestApiServlet extends ScalatraServlet with ScalateSupport with JsonHelper
       try {
         getParameter(request, "limit").getOrElse("10").toInt
       } catch {
-        case e: NumberFormatException => throw new JeedurException(403, ErrorMessages.QUERY_PARAMETERS_NOT_VALID)
+        case e: NumberFormatException => throw new JeedurException(400, ErrorMessages.QUERY_PARAMETERS_NOT_VALID)
       }
 
     val offset =
