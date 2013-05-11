@@ -15,19 +15,29 @@ object Review {
   val INITIAL_BACKOFF = Duration.standardHours(3)
 
   def getNextStudyTime(reviews: List[Review]): DateTime = {
-    val sortedReviews = reviews.sortBy(_.reviewDate.getMillis)
+    val sortedReviews = reviews.sortBy(_.reviewDate.getMillis).reverse
+    val lastReviewTime = if (!sortedReviews.isEmpty) sortedReviews.head.reviewDate else new DateTime(0)
+
     val (correctReviews, _) = sortedReviews.span(_.difficulty == EASY)
+
     correctReviews match {
-      case Nil => DateTime.now()
+      case Nil => lastReviewTime
+
       case Review(reviewDate, _, _, EASY) :: Nil => reviewDate.plus(INITIAL_BACKOFF)
-      case correctReviews =>
-        val lastCorrectReview = correctReviews.head
-        val intervals = (correctReviews.init zip correctReviews.tail).map {
-          case (review1, review2) => new Interval(review1.reviewDate, review2.reviewDate)
+
+      case latestSetOfCorrectReviews =>
+        val durations = (latestSetOfCorrectReviews.tail zip latestSetOfCorrectReviews.init).map {
+          case (review1, review2) => new Interval(review1.reviewDate, review2.reviewDate).toDuration
+        }.sortBy(i => i.getMillis).reverse
+
+        val longestDuration = durations.head
+
+        val nextDuration = Duration.millis(longestDuration.getMillis * REVIEW_BACKOFF_FACTOR)
+        if (nextDuration.getMillis < INITIAL_BACKOFF.getMillis) {
+          lastReviewTime.plus(INITIAL_BACKOFF)
+        } else {
+          lastReviewTime.plus(nextDuration)
         }
-        val sortedIntervals = intervals.sortBy(i => i.toDuration.getMillis)
-        val longestInterval = sortedIntervals.head
-        lastCorrectReview.reviewDate.plus(longestInterval.toDuration.withDurationAdded(0, REVIEW_BACKOFF_FACTOR))
     }
   }
 }

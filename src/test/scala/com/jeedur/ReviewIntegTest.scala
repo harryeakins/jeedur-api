@@ -5,7 +5,7 @@ import json.JsonAST.JInt
 import org.scalatra.test.scalatest.ScalatraFunSuite
 import org.scalatest.BeforeAndAfterEach
 
-class ReviewTest extends ScalatraFunSuite with JsonHelpers with BeforeAndAfterEach {
+class ReviewIntegTest extends ScalatraFunSuite with JsonHelpers with BeforeAndAfterEach {
   addServlet(new RestApiServlet, "/*")
 
   var user_id: BigInt = _
